@@ -1,0 +1,2017 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Holiday Gala 2026 | QR Attendance & Check-In</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Inter & Playfair Display -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- EmailJS SDK -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+    
+    <!-- QRCode.js for Client-Side QR Generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    
+    <!-- Html5-QRCode for Real-Time Camera Scanning -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+    <!-- SheetJS (xlsx) for Excel (.xlsx) Database Import & Export -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        serif: ['Playfair Display', 'serif'],
+                    },
+                    colors: {
+                        emeraldDeep: '#0f3d2e',
+                        emeraldDark: '#09261d',
+                        cranberry: '#b91c1c',
+                        cranberryDark: '#991b1b',
+                        champagne: '#d97706',
+                        goldLight: '#fbbf24',
+                        snow: '#f8fafc',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Subtle Snowfall Animation */
+        .snowflake {
+            position: fixed;
+            top: -10px;
+            color: rgba(255, 255, 255, 0.28);
+            user-select: none;
+            pointer-events: none;
+            z-index: 1;
+            animation: fall linear infinite;
+        }
+        @keyframes fall {
+            0% { transform: translateY(-10vh) translateX(0px) rotate(0deg); }
+            100% { transform: translateY(105vh) translateX(25px) rotate(360deg); }
+        }
+
+        /* Scanner Viewfinder Styling */
+        #qr-reader {
+            border: none !important;
+            border-radius: 0.75rem;
+            overflow: hidden;
+        }
+        #qr-reader video {
+            border-radius: 0.75rem;
+            object-fit: cover;
+        }
+        #qr-reader__dashboard_section_csr button {
+            background-color: #0f3d2e !important;
+            color: white !important;
+            padding: 0.5rem 1rem !important;
+            border-radius: 0.5rem !important;
+            font-weight: 500 !important;
+            border: none !important;
+            cursor: pointer !important;
+            margin: 4px !important;
+        }
+        #qr-reader__dashboard_section_swaplink {
+            color: #0f3d2e !important;
+            text-decoration: underline !important;
+            font-size: 0.875rem !important;
+        }
+
+        /* Print Pass Styling */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #printable-pass-area, #printable-pass-area * {
+                visibility: visible;
+            }
+            #printable-pass-area {
+                position: fixed;
+                left: 50%;
+                top: 50%;
+                transform: translate(-50%, -50%);
+                width: 380px;
+                box-shadow: none !important;
+                border: 2px solid #0f3d2e !important;
+            }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col font-sans relative overflow-x-hidden">
+
+    <!-- Subtle Ambient Snowflakes Container -->
+    <div id="snow-container" aria-hidden="true"></div>
+
+    <!-- Top Festive Header -->
+    <header class="bg-gradient-to-r from-emeraldDark via-emeraldDeep to-emeraldDark text-white shadow-lg border-b-4 border-goldLight relative z-20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div class="flex items-center gap-3.5">
+                    <div class="w-12 h-12 rounded-xl bg-cranberry flex items-center justify-center shadow-inner border border-goldLight/40 shrink-0">
+                        <i class="fa-solid fa-tree text-goldLight text-2xl"></i>
+                    </div>
+                    <div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="text-xs uppercase tracking-widest text-goldLight font-semibold">Event Check-In Portal</span>
+                            <span id="cloud-sync-badge" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-900/80 text-amber-200 border border-amber-500/40 transition-colors">
+                                <span id="cloud-sync-dot" class="w-1.5 h-1.5 rounded-full bg-amber-400 mr-1.5 animate-pulse"></span>
+                                <span id="cloud-sync-text">Connecting Cloud DB...</span>
+                            </span>
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-800/80 text-emerald-200 border border-emerald-600/40">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1.5"></span>EmailJS Active
+                            </span>
+                        </div>
+                        <h1 class="font-serif text-xl sm:text-2xl font-bold tracking-tight text-white">Annual Christmas Party 2026</h1>
+                    </div>
+                </div>
+
+                <!-- Navigation Tabs -->
+                <nav class="flex flex-wrap items-center gap-2 bg-emeraldDark/70 p-1.5 rounded-xl border border-emerald-700/50">
+                    <button onclick="switchTab('register')" id="tab-btn-register" class="nav-tab flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all bg-cranberry text-white shadow">
+                        <i class="fa-solid fa-user-plus"></i>
+                        <span>Registration & QR</span>
+                    </button>
+                    <button onclick="switchTab('scanner')" id="tab-btn-scanner" class="nav-tab flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all text-emerald-100 hover:bg-emerald-800/60">
+                        <i class="fa-solid fa-qrcode"></i>
+                        <span>Staff Scanner</span>
+                    </button>
+                    <button onclick="switchTab('dashboard')" id="tab-btn-dashboard" class="nav-tab flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all text-emerald-100 hover:bg-emerald-800/60">
+                        <i class="fa-solid fa-chart-pie"></i>
+                        <span>Attendance List</span>
+                        <span id="nav-badge-count" class="ml-1 bg-goldLight text-emeraldDark text-xs font-bold px-2 py-0.5 rounded-full">0</span>
+                    </button>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2.5 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
+
+    <!-- Main Content Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 relative z-10">
+
+        <!-- =================================================================== -->
+        <!-- TAB 1: GUEST REGISTRATION & QR GENERATION                           -->
+        <!-- =================================================================== -->
+        <section id="view-register" class="view-section">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                
+                <!-- Left Column: Registration Form -->
+                <div class="lg:col-span-7 bg-white rounded-2xl shadow-md border border-slate-200/80 overflow-hidden">
+                    <div class="bg-gradient-to-r from-emeraldDeep to-emerald-900 px-6 py-4 flex items-center justify-between border-b border-emerald-800">
+                        <div class="flex items-center gap-2.5 text-white">
+                            <i class="fa-solid fa-envelope-open-text text-goldLight"></i>
+                            <h2 class="font-semibold text-lg">Register Guest & Issue QR Pass</h2>
+                        </div>
+                        <button type="button" onclick="openPayloadModal()" class="text-xs bg-white/10 hover:bg-white/20 text-goldLight border border-goldLight/30 px-3 py-1.5 rounded-lg transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-code"></i>
+                            <span>EmailJS Template & HTML</span>
+                        </button>
+                    </div>
+
+                    <form id="registration-form" onsubmit="handleGuestRegistration(event)" class="p-6 space-y-5">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label for="guest-name" class="block text-sm font-medium text-slate-700 mb-1">Full Name <span class="text-cranberry">*</span></label>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                                        <i class="fa-solid fa-user text-sm"></i>
+                                    </span>
+                                    <input type="text" id="guest-name" required placeholder="e.g. Maria Clara Santos" class="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emeraldDeep focus:border-emeraldDeep transition">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label for="guest-email" class="block text-sm font-medium text-slate-700 mb-1">Email Address <span class="text-cranberry">*</span></label>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                                        <i class="fa-solid fa-envelope text-sm"></i>
+                                    </span>
+                                    <input type="email" id="guest-email" required placeholder="maria.santos@company.com" class="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emeraldDeep focus:border-emeraldDeep transition">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label for="guest-dept" class="block text-sm font-medium text-slate-700 mb-1">Department / Group <span class="text-slate-400 text-xs font-normal">(Optional)</span></label>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                                        <i class="fa-solid fa-building text-sm"></i>
+                                    </span>
+                                    <input type="text" id="guest-dept" placeholder="e.g. Engineering, Marketing, Family" class="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emeraldDeep focus:border-emeraldDeep transition">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label for="guest-type" class="block text-sm font-medium text-slate-700 mb-1">Guest Category <span class="text-cranberry">*</span></label>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                                        <i class="fa-solid fa-star text-sm"></i>
+                                    </span>
+                                    <select id="guest-type" class="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emeraldDeep focus:border-emeraldDeep transition">
+                                        <option value="Employee">Employee</option>
+                                        <option value="VIP">VIP Guest</option>
+                                        <option value="Plus-One">Plus-One</option>
+                                        <option value="Executive">Executive</option>
+                                        <option value="Vendor / Partner">Vendor / Partner</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Auto-send Email Option -->
+                        <div class="bg-amber-50/80 border border-amber-200/80 rounded-xl p-4 flex items-start gap-3">
+                            <input type="checkbox" id="auto-send-email" checked class="mt-1 h-4 w-4 rounded text-emeraldDeep focus:ring-emeraldDeep border-slate-300 cursor-pointer">
+                            <div class="text-sm">
+                                <label for="auto-send-email" class="font-semibold text-slate-800 cursor-pointer">Automatically send QR Pass via EmailJS upon registration</label>
+                                <p class="text-xs text-slate-600 mt-0.5">Uses Service <code class="bg-white px-1.5 py-0.5 rounded border border-amber-200 text-amber-800">service_h3hfprm</code> & Template <code class="bg-white px-1.5 py-0.5 rounded border border-amber-200 text-amber-800">template_n9u8619</code> to deliver the attendee's digital entry pass.</p>
+                            </div>
+                        </div>
+
+                        <div class="pt-2 flex flex-wrap items-center justify-between gap-3">
+                            <button type="button" onclick="loadSampleGuests()" class="text-sm text-slate-600 hover:text-emeraldDeep font-medium px-3 py-2 rounded-xl hover:bg-slate-100 transition flex items-center gap-1.5">
+                                <i class="fa-solid fa-wand-magic-sparkles text-champagne"></i>
+                                <span>Load Sample Christmas Guests</span>
+                            </button>
+
+                            <button type="submit" id="btn-submit-guest" class="bg-cranberry hover:bg-cranberryDark text-white font-semibold px-6 py-3 rounded-xl shadow-md hover:shadow-lg transition flex items-center gap-2">
+                                <i class="fa-solid fa-ticket"></i>
+                                <span>Generate QR & Register</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Right Column: Live Digital Ticket Preview -->
+                <div class="lg:col-span-5">
+                    <div class="bg-white rounded-2xl shadow-md border border-slate-200/80 p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="font-semibold text-slate-800 flex items-center gap-2">
+                                <i class="fa-solid fa-id-card-clip text-cranberry"></i>
+                                <span>Digital Entry Pass Preview</span>
+                            </h3>
+                            <span id="pass-email-badge" class="hidden text-xs font-medium px-2.5 py-1 rounded-full bg-slate-100 text-slate-600">Not Sent</span>
+                        </div>
+
+                        <!-- Festive Ticket Card (Printable Area) -->
+                        <div id="printable-pass-area" class="rounded-2xl overflow-hidden shadow-lg border-2 border-goldLight/60 bg-gradient-to-b from-emeraldDeep via-emeraldDark to-emeraldDeep text-white relative">
+                            <!-- Decorative Top Banner -->
+                            <div class="bg-cranberry px-5 py-3 text-center border-b border-goldLight/40 relative">
+                                <p class="text-[11px] uppercase tracking-[0.2em] text-goldLight font-semibold">Official Admit One Pass</p>
+                                <h4 class="font-serif text-lg font-bold text-white tracking-wide">Annual Christmas Party</h4>
+                            </div>
+
+                            <!-- Ticket Body -->
+                            <div class="p-6 flex flex-col items-center text-center">
+                                <!-- QR Code Container -->
+                                <div class="bg-white p-3.5 rounded-2xl shadow-inner border-4 border-goldLight/80 mb-4 relative">
+                                    <div id="preview-qr-container" class="w-44 h-44 flex items-center justify-center">
+                                        <!-- Placeholder QR before first guest -->
+                                        <div class="text-slate-400 flex flex-col items-center justify-center text-xs p-2">
+                                            <i class="fa-solid fa-qrcode text-5xl text-slate-300 mb-2"></i>
+                                            <span>Register a guest to generate scannable QR</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <span id="preview-guest-type" class="inline-block px-3 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-goldLight text-emeraldDark mb-2">
+                                    VIP GUEST
+                                </span>
+
+                                <h5 id="preview-guest-name" class="font-serif text-2xl font-bold text-white leading-tight">
+                                    Guest Name
+                                </h5>
+                                <p id="preview-guest-dept" class="text-xs text-emerald-200 mt-1">
+                                    Department / Group
+                                </p>
+                                <p id="preview-guest-email" class="text-xs text-emerald-300/80 mt-0.5">
+                                    guest@example.com
+                                </p>
+
+                                <!-- Ticket Perforation Line -->
+                                <div class="w-full border-t border-dashed border-emerald-600/70 my-4 relative">
+                                    <div class="w-5 h-5 rounded-full bg-white absolute -left-8 -top-2.5"></div>
+                                    <div class="w-5 h-5 rounded-full bg-white absolute -right-8 -top-2.5"></div>
+                                </div>
+
+                                <div class="w-full flex items-center justify-between text-xs text-emerald-200 px-2">
+                                    <span>PASS ID:</span>
+                                    <span id="preview-guest-id" class="font-mono font-bold text-goldLight text-sm">XMAS-2026-0000</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Ticket Action Buttons -->
+                        <div id="pass-actions" class="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-2.5 opacity-50 pointer-events-none transition-opacity">
+                            <button type="button" onclick="sendEmailForCurrentPass()" id="btn-send-email-now" class="sm:col-span-3 bg-emeraldDeep hover:bg-emeraldDark text-white font-medium py-2.5 px-4 rounded-xl shadow transition flex items-center justify-center gap-2 text-sm">
+                                <i class="fa-solid fa-paper-plane text-goldLight"></i>
+                                <span>Send QR via EmailJS</span>
+                            </button>
+                            <button type="button" onclick="downloadCurrentPassImage()" class="sm:col-span-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-medium py-2 px-3 rounded-xl transition flex items-center justify-center gap-1.5 text-xs border border-slate-300">
+                                <i class="fa-solid fa-download text-emeraldDeep"></i>
+                                <span>Download Pass PNG</span>
+                            </button>
+                            <button type="button" onclick="window.print()" class="bg-slate-100 hover:bg-slate-200 text-slate-800 font-medium py-2 px-3 rounded-xl transition flex items-center justify-center gap-1.5 text-xs border border-slate-300">
+                                <i class="fa-solid fa-print text-cranberry"></i>
+                                <span>Print</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- =================================================================== -->
+        <!-- TAB 2: STAFF QR SCANNER (CHECK-IN STATION)                          -->
+        <!-- =================================================================== -->
+        <section id="view-scanner" class="view-section hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                
+                <!-- Left Column: Camera & Manual Check-In -->
+                <div class="lg:col-span-6 space-y-6">
+                    <!-- Camera Scanner Card -->
+                    <div class="bg-white rounded-2xl shadow-md border border-slate-200/80 overflow-hidden">
+                        <div class="bg-gradient-to-r from-emeraldDeep to-emerald-900 px-6 py-4 flex items-center justify-between">
+                            <div class="flex items-center gap-2.5 text-white">
+                                <i class="fa-solid fa-camera text-goldLight"></i>
+                                <h2 class="font-semibold text-lg">Live QR Code Scanner</h2>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button id="btn-start-scan" onclick="startCameraScanner()" class="bg-goldLight hover:bg-amber-400 text-emeraldDark font-semibold text-xs px-3.5 py-2 rounded-lg transition flex items-center gap-1.5 shadow">
+                                    <i class="fa-solid fa-play"></i>
+                                    <span>Start Camera</span>
+                                </button>
+                                <button id="btn-stop-scan" onclick="stopCameraScanner()" class="hidden bg-cranberry hover:bg-cranberryDark text-white font-semibold text-xs px-3.5 py-2 rounded-lg transition flex items-center gap-1.5 shadow">
+                                    <i class="fa-solid fa-stop"></i>
+                                    <span>Stop Camera</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="p-6">
+                            <!-- Camera Viewport -->
+                            <div class="bg-slate-900 rounded-xl min-h-[280px] flex flex-col items-center justify-center relative overflow-hidden border-2 border-slate-200">
+                                <div id="qr-reader" class="w-full"></div>
+                                <div id="camera-placeholder" class="text-center p-6 text-slate-300">
+                                    <div class="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center mx-auto mb-3 border border-slate-700">
+                                        <i class="fa-solid fa-qrcode text-3xl text-goldLight"></i>
+                                    </div>
+                                    <p class="font-medium text-white">Camera Standby</p>
+                                    <p class="text-xs text-slate-400 mt-1 max-w-xs mx-auto">Click "Start Camera" above to scan guest QR codes, or use the Quick Check-In simulator below.</p>
+                                </div>
+                            </div>
+
+                            <div class="mt-4 flex items-center justify-between text-xs text-slate-500">
+                                <span class="flex items-center gap-1.5">
+                                    <i class="fa-solid fa-volume-high text-emeraldDeep"></i>
+                                    <span>Festive Web Audio chime enabled</span>
+                                </span>
+                                <button type="button" onclick="playFestiveChime('success')" class="text-emeraldDeep hover:underline font-medium">
+                                    Test Chime
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Manual Check-In / Simulated Scan Card -->
+                    <div class="bg-white rounded-2xl shadow-md border border-slate-200/80 p-6">
+                        <h3 class="font-semibold text-slate-800 flex items-center gap-2 mb-1">
+                            <i class="fa-solid fa-keyboard text-champagne"></i>
+                            <span>Manual Check-In / Simulated Scan</span>
+                        </h3>
+                        <p class="text-xs text-slate-500 mb-4">No camera available? Select a registered guest or enter their Pass ID to simulate a QR scan.</p>
+
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">Quick Select Registered Guest</label>
+                                <div class="flex gap-2">
+                                    <select id="manual-guest-select" class="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emeraldDeep">
+                                        <option value="">-- Choose a guest to simulate scan --</option>
+                                    </select>
+                                    <button type="button" onclick="simulateSelectedScan()" class="bg-emeraldDeep hover:bg-emeraldDark text-white font-medium px-4 py-2.5 rounded-xl text-sm transition shrink-0">
+                                        Scan Guest
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="relative flex py-1 items-center">
+                                <div class="flex-grow border-t border-slate-200"></div>
+                                <span class="flex-shrink mx-3 text-xs text-slate-400 uppercase">or enter ID / QR payload</span>
+                                <div class="flex-grow border-t border-slate-200"></div>
+                            </div>
+
+                            <form onsubmit="handleManualIdSubmit(event)" class="flex gap-2">
+                                <input type="text" id="manual-id-input" placeholder="e.g. XMAS-2026-1001" class="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emeraldDeep">
+                                <button type="submit" class="bg-cranberry hover:bg-cranberryDark text-white font-medium px-5 py-2.5 rounded-xl text-sm transition shrink-0">
+                                    Verify ID
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Scan Feedback Banner & Recent Check-In Feed -->
+                <div class="lg:col-span-6 space-y-6">
+                    <!-- Dynamic Scan Result Banner -->
+                    <div id="scan-result-card" class="bg-white rounded-2xl shadow-md border-2 border-slate-200 p-6 transition-all duration-300">
+                        <div class="flex items-center gap-4">
+                            <div id="scan-result-icon" class="w-16 h-16 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center text-3xl shrink-0">
+                                <i class="fa-solid fa-bell-concierge"></i>
+                            </div>
+                            <div class="flex-1">
+                                <span id="scan-result-badge" class="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-slate-100 text-slate-600 mb-1">
+                                    Ready to Scan
+                                </span>
+                                <h3 id="scan-result-title" class="text-xl font-bold text-slate-800">
+                                    Awaiting Guest QR Pass
+                                </h3>
+                                <p id="scan-result-subtitle" class="text-sm text-slate-500 mt-0.5">
+                                    Present a guest's QR code to the camera or use the manual check-in panel.
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Extra Details Box (Populated on Scan) -->
+                        <div id="scan-result-details" class="hidden mt-4 pt-4 border-t border-slate-200/80 grid grid-cols-2 gap-3 text-sm">
+                            <div class="bg-white/70 p-2.5 rounded-xl border border-slate-200/60">
+                                <span class="text-xs text-slate-500 block">Guest Category</span>
+                                <span id="scan-detail-type" class="font-semibold text-slate-800">-</span>
+                            </div>
+                            <div class="bg-white/70 p-2.5 rounded-xl border border-slate-200/60">
+                                <span class="text-xs text-slate-500 block">Check-In Time</span>
+                                <span id="scan-detail-time" class="font-semibold text-slate-800">-</span>
+                            </div>
+                            <div class="bg-white/70 p-2.5 rounded-xl border border-slate-200/60">
+                                <span class="text-xs text-slate-500 block">Department / Group</span>
+                                <span id="scan-detail-dept" class="font-semibold text-slate-800">-</span>
+                            </div>
+                            <div class="bg-white/70 p-2.5 rounded-xl border border-slate-200/60">
+                                <span class="text-xs text-slate-500 block">Pass ID</span>
+                                <span id="scan-detail-id" class="font-mono font-semibold text-slate-800">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Live Check-In Activity Log -->
+                    <div class="bg-white rounded-2xl shadow-md border border-slate-200/80 overflow-hidden">
+                        <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/70">
+                            <h3 class="font-semibold text-slate-800 flex items-center gap-2">
+                                <i class="fa-solid fa-clock-rotate-left text-emeraldDeep"></i>
+                                <span>Recent Check-In Activity</span>
+                            </h3>
+                            <span id="recent-checkin-counter" class="text-xs font-medium text-slate-500">0 checked in</span>
+                        </div>
+                        <div id="recent-activity-list" class="divide-y divide-slate-100 max-h-[340px] overflow-y-auto">
+                            <div class="p-8 text-center text-slate-400 text-sm">
+                                <i class="fa-solid fa-sleigh text-2xl mb-2 text-slate-300 block"></i>
+                                No guests checked in yet.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- =================================================================== -->
+        <!-- TAB 3: ATTENDANCE DASHBOARD & GUEST LIST                            -->
+        <!-- =================================================================== -->
+        <section id="view-dashboard" class="view-section hidden space-y-6">
+            
+            <!-- Real-Time KPI Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80 flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-xl bg-emeraldDeep/10 text-emeraldDeep flex items-center justify-center text-xl shrink-0">
+                        <i class="fa-solid fa-users"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Total Registered</p>
+                        <p id="stat-total" class="text-2xl font-bold text-slate-800 mt-0.5">0</p>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80 flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-xl shrink-0">
+                        <i class="fa-solid fa-circle-check"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Checked In</p>
+                        <p id="stat-checked-in" class="text-2xl font-bold text-emerald-700 mt-0.5">0</p>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80 flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center text-xl shrink-0">
+                        <i class="fa-solid fa-hourglass-half"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Pending Arrival</p>
+                        <p id="stat-pending" class="text-2xl font-bold text-amber-700 mt-0.5">0</p>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80 flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-xl bg-cranberry/10 text-cranberry flex items-center justify-center text-xl shrink-0">
+                        <i class="fa-solid fa-chart-line"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Attendance Rate</p>
+                        <p id="stat-rate" class="text-2xl font-bold text-cranberry mt-0.5">0%</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Guest Directory & Controls -->
+            <div class="bg-white rounded-2xl shadow-md border border-slate-200/80 overflow-hidden">
+                <!-- Filter & Export Toolbar -->
+                <div class="p-5 border-b border-slate-200 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 bg-slate-50/60">
+                    <div class="flex flex-col sm:flex-row gap-3 flex-1">
+                        <!-- Search -->
+                        <div class="relative flex-1 max-w-md">
+                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                                <i class="fa-solid fa-magnifying-glass text-sm"></i>
+                            </span>
+                            <input type="text" id="search-guests" oninput="renderGuestTable()" placeholder="Search name, email, or Pass ID..." class="w-full pl-9 pr-3 py-2 bg-white border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emeraldDeep">
+                        </div>
+
+                        <!-- Filter Status -->
+                        <select id="filter-status" onchange="renderGuestTable()" class="bg-white border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emeraldDeep">
+                            <option value="all">All Statuses</option>
+                            <option value="checked-in">Checked In</option>
+                            <option value="pending">Pending Arrival</option>
+                        </select>
+
+                        <!-- Filter Category -->
+                        <select id="filter-category" onchange="renderGuestTable()" class="bg-white border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emeraldDeep">
+                            <option value="all">All Categories</option>
+                            <option value="Employee">Employee</option>
+                            <option value="VIP">VIP</option>
+                            <option value="Plus-One">Plus-One</option>
+                            <option value="Executive">Executive</option>
+                            <option value="Vendor / Partner">Vendor / Partner</option>
+                        </select>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2">
+                        <!-- Hidden File Input for Excel (.xlsx / .csv) Import -->
+                        <input type="file" id="excel-file-input" accept=".xlsx,.xls,.csv" onchange="handleExcelImport(event)" class="hidden">
+                        
+                        <button type="button" onclick="triggerExcelImport()" class="bg-white hover:bg-emerald-50 text-emeraldDeep border border-emeraldDeep/30 font-semibold px-3.5 py-2 rounded-xl text-xs shadow-sm transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-file-import text-emeraldDeep"></i>
+                            <span>Import Excel (.xlsx)</span>
+                        </button>
+                        <button type="button" onclick="exportExcelDatabase()" class="bg-emeraldDeep hover:bg-emeraldDark text-white font-semibold px-4 py-2 rounded-xl text-xs shadow transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-file-excel text-goldLight"></i>
+                            <span>Export Excel (.xlsx)</span>
+                        </button>
+                        <button type="button" onclick="loadSampleGuests()" class="bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-medium px-3.5 py-2 rounded-xl text-xs transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-users-gear text-champagne"></i>
+                            <span>Load Samples</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Responsive Table -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-100/80 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                                <th class="py-3.5 px-4">Guest ID</th>
+                                <th class="py-3.5 px-4">Guest Details</th>
+                                <th class="py-3.5 px-4">Category</th>
+                                <th class="py-3.5 px-4">Email Status</th>
+                                <th class="py-3.5 px-4">Check-In Status</th>
+                                <th class="py-3.5 px-4">Check-In Time</th>
+                                <th class="py-3.5 px-4 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="guest-table-body" class="divide-y divide-slate-100 text-sm">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- =================================================================== -->
+    <!-- EMAILJS TEMPLATE SETUP & HTML SNIPPET MODAL                         -->
+    <!-- =================================================================== -->
+    <div id="payload-modal" class="hidden fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-slate-200 animate-fade-in">
+            <div class="bg-gradient-to-r from-emeraldDark via-emeraldDeep to-emeraldDark px-6 py-4 flex items-center justify-between text-white border-b-2 border-goldLight">
+                <div class="flex items-center gap-2.5">
+                    <i class="fa-solid fa-envelope-circle-check text-goldLight text-lg"></i>
+                    <div>
+                        <h3 class="font-bold text-base">EmailJS QR Image Setup (<code class="text-goldLight text-xs">template_n9u8619</code>)</h3>
+                        <p class="text-[11px] text-emerald-200">Ensure your EmailJS template renders the scannable QR image in Gmail &amp; Outlook</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closePayloadModal()" class="text-emerald-200 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-4 max-h-[80vh] overflow-y-auto text-sm text-slate-700">
+                <div class="bg-amber-50 border border-amber-200 rounded-xl p-3.5 text-xs text-amber-900 flex items-start gap-2.5">
+                    <i class="fa-solid fa-lightbulb text-amber-600 mt-0.5 text-sm"></i>
+                    <div>
+                        <p class="font-semibold">Why HTTPS QR URLs are sent automatically:</p>
+                        <p class="mt-0.5">Gmail and Outlook block raw <code class="bg-white px-1 rounded">data:image/png;base64</code> attachments. This app sends a live HTTPS QR image URL in <code class="bg-white px-1 rounded font-bold">{{qr_code_url}}</code> plus a ready-to-render HTML card in <code class="bg-white px-1 rounded font-bold">{{qr_html}}</code> / <code class="bg-white px-1 rounded font-bold">{{message_html}}</code>.</p>
+                    </div>
+                </div>
+
+                <!-- Active Credentials Summary -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                    <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                        <span class="text-slate-400 block">Public Key</span>
+                        <code class="font-bold text-slate-800">kqIzEf-5-Noa9NWNR</code>
+                    </div>
+                    <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                        <span class="text-slate-400 block">Service ID</span>
+                        <code class="font-bold text-slate-800">service_h3hfprm</code>
+                    </div>
+                    <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                        <span class="text-slate-400 block">Template ID</span>
+                        <code class="font-bold text-slate-800">template_n9u8619</code>
+                    </div>
+                </div>
+
+                <!-- Copy-Paste EmailJS HTML Template -->
+                <div>
+                    <div class="flex items-center justify-between mb-1.5">
+                        <label class="font-semibold text-slate-800 text-xs uppercase tracking-wider">Copy-Paste HTML for EmailJS Template Editor (<code class="lowercase font-mono">&lt;&gt; Source Code</code>)</label>
+                        <button type="button" onclick="copyEmailJsHtmlSnippet()" class="bg-emeraldDeep hover:bg-emeraldDark text-white text-xs font-medium px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow-sm">
+                            <i class="fa-solid fa-copy text-goldLight"></i>
+                            <span>Copy HTML Template</span>
+                        </button>
+                    </div>
+                    <textarea id="emailjs-template-snippet" readonly rows="11" class="w-full font-mono text-xs bg-slate-900 text-emerald-300 p-3.5 rounded-xl border border-slate-700 focus:outline-none leading-relaxed">&lt;div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; border: 2px solid #0f3d2e; border-radius: 16px; overflow: hidden;"&gt;
+  &lt;div style="background: #b91c1c; color: #ffffff; padding: 18px; text-align: center;"&gt;
+    &lt;p style="margin: 0; font-size: 11px; letter-spacing: 2px; color: #fbbf24; font-weight: bold;"&gt;OFFICIAL ADMIT ONE PASS&lt;/p&gt;
+    &lt;h2 style="margin: 6px 0 0; font-size: 22px;"&gt;{{event_name}}&lt;/h2&gt;
+  &lt;/div&gt;
+  &lt;div style="padding: 24px; text-align: center; background: #ffffff; color: #1e293b;"&gt;
+    &lt;p style="margin: 0 0 12px; font-size: 15px;"&gt;Hi &lt;strong&gt;{{to_name}}&lt;/strong&gt;, present this QR code at the entrance:&lt;/p&gt;
+    &lt;img src="{{qr_code_url}}" alt="Guest QR Code" width="240" height="240" style="border: 4px solid #0f3d2e; border-radius: 12px; display: inline-block;" /&gt;
+    &lt;p style="margin: 14px 0 4px; font-family: monospace; font-size: 18px; font-weight: bold; color: #0f3d2e;"&gt;{{guest_id}}&lt;/p&gt;
+    &lt;p style="margin: 0; font-size: 12px; color: #64748b;"&gt;Category: {{guest_type}} | Group: {{department}}&lt;/p&gt;
+  &lt;/div&gt;
+&lt;/div&gt;</textarea>
+                    <p class="text-[11px] text-slate-500 mt-1.5">Tip: In your EmailJS template settings, set <strong>To Email</strong> to <code class="bg-slate-100 px-1 rounded">{{to_email}}</code>. If your template already uses <code class="bg-slate-100 px-1 rounded">{{{message_html}}}</code> or <code class="bg-slate-100 px-1 rounded">{{{qr_html}}}</code>, this app also sends the full styled pass HTML automatically.</p>
+                </div>
+            </div>
+
+            <div class="bg-slate-50 px-6 py-3.5 border-t border-slate-200 flex justify-end">
+                <button type="button" onclick="closePayloadModal()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold px-4 py-2 rounded-xl transition">
+                    Done
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- SINGLE GUEST QR PASS MODAL (FROM ATTENDANCE TABLE)                  -->
+    <!-- =================================================================== -->
+    <div id="guest-qr-modal" class="hidden fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden border border-slate-200">
+            <div class="bg-cranberry px-5 py-3.5 flex items-center justify-between text-white border-b border-goldLight/40">
+                <span class="text-xs font-bold uppercase tracking-widest text-goldLight">Guest Digital Pass</span>
+                <button type="button" onclick="closeGuestQrModal()" class="text-white/80 hover:text-white">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="p-6 text-center bg-gradient-to-b from-emeraldDeep to-emeraldDark text-white">
+                <div class="bg-white p-3 rounded-2xl inline-block border-4 border-goldLight shadow-md mb-3">
+                    <div id="modal-qr-container" class="w-44 h-44 flex items-center justify-center"></div>
+                </div>
+                <div>
+                    <span id="modal-guest-type" class="inline-block px-3 py-0.5 rounded-full text-[11px] font-bold uppercase bg-goldLight text-emeraldDark mb-1.5">VIP</span>
+                    <h4 id="modal-guest-name" class="font-serif text-xl font-bold text-white">Guest Name</h4>
+                    <p id="modal-guest-email" class="text-xs text-emerald-200 mt-0.5">guest@example.com</p>
+                    <p id="modal-guest-id" class="font-mono text-sm font-bold text-goldLight mt-3">XMAS-2026-0000</p>
+                </div>
+            </div>
+
+            <div class="p-4 bg-slate-50 border-t border-slate-200 grid grid-cols-2 gap-2.5">
+                <button type="button" id="modal-btn-resend" class="bg-emeraldDeep hover:bg-emeraldDark text-white text-xs font-semibold py-2.5 px-3 rounded-xl transition flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-paper-plane text-goldLight"></i>
+                    <span>Email QR Pass</span>
+                </button>
+                <button type="button" id="modal-btn-checkin" class="bg-cranberry hover:bg-cranberryDark text-white text-xs font-semibold py-2.5 px-3 rounded-xl transition flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-check"></i>
+                    <span>Check In Now</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- FIREBASE CLOUD DATABASE SYNC MODULE                                 -->
+    <!-- =================================================================== -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, updateDoc, deleteDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const appId = typeof __app_id !== "undefined" ? __app_id : "christmas-party-2026";
+        let db = null;
+        let auth = null;
+        let currentUser = null;
+        let cloudReady = false;
+
+        function setSyncBadge(state, label) {
+            const badge = document.getElementById("cloud-sync-badge");
+            const dot = document.getElementById("cloud-sync-dot");
+            const text = document.getElementById("cloud-sync-text");
+            if (!badge || !dot || !text) return;
+
+            text.textContent = label;
+            if (state === "live") {
+                badge.className = "inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-emerald-900/90 text-emerald-200 border border-emerald-400/50 transition-colors";
+                dot.className = "w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1.5 animate-pulse";
+            } else if (state === "error") {
+                badge.className = "inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-red-900/90 text-red-200 border border-red-400/50 transition-colors";
+                dot.className = "w-1.5 h-1.5 rounded-full bg-red-400 mr-1.5";
+            } else {
+                badge.className = "inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-900/80 text-amber-200 border border-amber-500/40 transition-colors";
+                dot.className = "w-1.5 h-1.5 rounded-full bg-amber-400 mr-1.5 animate-pulse";
+            }
+        }
+
+        function getGuestsCollectionRef() {
+            return collection(db, "artifacts", appId, "public", "data", "christmas_guests");
+        }
+
+        function getGuestDocRef(guestId) {
+            return doc(db, "artifacts", appId, "public", "data", "christmas_guests", guestId);
+        }
+
+        // Expose cloud operations to the main application script
+        window.cloudDB = {
+            isReady: () => cloudReady && Boolean(currentUser),
+            upsertGuest: async (guest) => {
+                if (!cloudReady || !currentUser) return;
+                await setDoc(getGuestDocRef(guest.id), guest, { merge: true });
+            },
+            updateGuestFields: async (guestId, fields) => {
+                if (!cloudReady || !currentUser) return;
+                await updateDoc(getGuestDocRef(guestId), fields);
+            },
+            removeGuest: async (guestId) => {
+                if (!cloudReady || !currentUser) return;
+                await deleteDoc(getGuestDocRef(guestId));
+            }
+        };
+
+        async function initCloudSync() {
+            try {
+                if (typeof __firebase_config === "undefined" || !__firebase_config) {
+                    setSyncBadge("error", "Offline Mode");
+                    return;
+                }
+
+                const firebaseConfig = JSON.parse(__firebase_config);
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                // RULE 3: Authenticate before executing any Firestore queries
+                if (typeof __initial_auth_token !== "undefined" && __initial_auth_token) {
+                    const cred = await signInWithCustomToken(auth, __initial_auth_token);
+                    currentUser = cred.user;
+                } else {
+                    const cred = await signInAnonymously(auth);
+                    currentUser = cred.user;
+                }
+
+                if (!currentUser) {
+                    setSyncBadge("error", "Auth Required");
+                    return;
+                }
+
+                cloudReady = true;
+                setSyncBadge("live", "Live Multi-Device Sync");
+
+                // Real-time listener on public shared guest collection (RULE 1 & RULE 2)
+                onSnapshot(
+                    getGuestsCollectionRef(),
+                    (snapshot) => {
+                        const syncedList = [];
+                        snapshot.forEach((docSnap) => {
+                            const data = docSnap.data();
+                            if (data && data.id) {
+                                syncedList.push(data);
+                            }
+                        });
+
+                        // Sort in memory by newest registration first
+                        syncedList.sort((a, b) => new Date(b.registeredAt || 0) - new Date(a.registeredAt || 0));
+
+                        if (typeof window.applyCloudGuestsSnapshot === "function") {
+                            window.applyCloudGuestsSnapshot(syncedList);
+                        }
+                    },
+                    (error) => {
+                        console.error("Firestore onSnapshot error:", error);
+                        setSyncBadge("error", "Sync Interrupted");
+                    }
+                );
+            } catch (err) {
+                console.error("Cloud DB initialization failed:", err);
+                setSyncBadge("error", "Sync Offline");
+            }
+        }
+
+        initCloudSync();
+    </script>
+
+    <!-- =================================================================== -->
+    <!-- APPLICATION LOGIC                                                   -->
+    <!-- =================================================================== -->
+    <script>
+        /**
+         * 1. EMAILJS CONFIGURATION & INITIALIZATION
+         */
+        window.EMAILJS_CONFIG = {
+            publicKey: "kqIzEf-5-Noa9NWNR",
+            serviceId: "service_h3hfprm",
+            templateId: "template_n9u8619"
+        };
+
+        document.addEventListener("DOMContentLoaded", () => {
+            try {
+                if (window.emailjs) {
+                    emailjs.init(window.EMAILJS_CONFIG.publicKey);
+                    console.log("EmailJS initialized with Public Key:", window.EMAILJS_CONFIG.publicKey);
+                }
+            } catch (err) {
+                console.error("Failed to initialize EmailJS:", err);
+            }
+
+            initSnowfall();
+            updateAllUI();
+        });
+
+        /**
+         * 2. IN-MEMORY & REAL-TIME CLOUD STATE MANAGEMENT
+         */
+        let guests = [];
+        let currentPreviewGuestId = null;
+        let html5QrCode = null;
+        let isScanning = false;
+        let lastScannedCode = "";
+        let lastScannedTime = 0;
+
+        // Called automatically by Firebase onSnapshot whenever any connected device updates the database
+        window.applyCloudGuestsSnapshot = function (syncedGuests) {
+            guests = syncedGuests;
+            updateAllUI();
+
+            // Refresh manual scanner dropdown if on scanner view
+            populateManualGuestDropdown();
+
+            // Keep live pass preview badge updated if the displayed guest changed on another device
+            if (currentPreviewGuestId) {
+                const activeGuest = guests.find(g => g.id === currentPreviewGuestId);
+                if (activeGuest) {
+                    updateEmailBadgeUI(document.getElementById("pass-email-badge"), activeGuest.emailStatus);
+                }
+            }
+        };
+
+        async function persistGuestRecord(guest) {
+            // Update local in-memory state immediately for zero-latency UI
+            const idx = guests.findIndex(g => g.id === guest.id);
+            if (idx >= 0) {
+                guests[idx] = guest;
+            } else {
+                guests.unshift(guest);
+            }
+            updateAllUI();
+
+            // Sync to shared cloud database so all other connected devices update instantaneously
+            if (window.cloudDB && window.cloudDB.isReady()) {
+                try {
+                    await window.cloudDB.upsertGuest(guest);
+                } catch (err) {
+                    console.error("Cloud upsert error:", err);
+                    showToast("Sync Warning", "Saved locally, but cloud sync encountered a delay.", "warning");
+                }
+            }
+        }
+
+        async function updateGuestRecordFields(guestId, fields) {
+            const guest = guests.find(g => g.id === guestId);
+            if (guest) {
+                Object.assign(guest, fields);
+                updateAllUI();
+            }
+
+            if (window.cloudDB && window.cloudDB.isReady()) {
+                try {
+                    await window.cloudDB.updateGuestFields(guestId, fields);
+                } catch (err) {
+                    console.error("Cloud update error:", err);
+                }
+            }
+        }
+
+        async function removeGuestRecord(guestId) {
+            const idx = guests.findIndex(g => g.id === guestId);
+            if (idx === -1) return null;
+            const removed = guests.splice(idx, 1)[0];
+            updateAllUI();
+
+            if (window.cloudDB && window.cloudDB.isReady()) {
+                try {
+                    await window.cloudDB.removeGuest(guestId);
+                } catch (err) {
+                    console.error("Cloud delete error:", err);
+                }
+            }
+            return removed;
+        }
+
+        function generateUniqueGuestId() {
+            let id;
+            do {
+                const rand = Math.floor(1000 + Math.random() * 9000);
+                id = `XMAS-2026-${rand}`;
+            } while (guests.some(g => g.id === id));
+            return id;
+        }
+
+        /**
+         * 3. SUBTLE AMBIENT SNOWFALL
+         */
+        function initSnowfall() {
+            const container = document.getElementById("snow-container");
+            const flakes = ["❄", "❅", "❆", "•"];
+            for (let i = 0; i < 18; i++) {
+                const span = document.createElement("span");
+                span.className = "snowflake";
+                span.textContent = flakes[i % flakes.length];
+                span.style.left = Math.random() * 100 + "vw";
+                span.style.fontSize = (Math.random() * 10 + 10) + "px";
+                span.style.animationDuration = (Math.random() * 12 + 10) + "s";
+                span.style.animationDelay = (Math.random() * 10) + "s";
+                container.appendChild(span);
+            }
+        }
+
+        /**
+         * 4. NAVIGATION TABS
+         */
+        function switchTab(tabName) {
+            document.querySelectorAll(".view-section").forEach(sec => sec.classList.add("hidden"));
+            document.getElementById(`view-${tabName}`).classList.remove("hidden");
+
+            document.querySelectorAll(".nav-tab").forEach(btn => {
+                btn.classList.remove("bg-cranberry", "text-white", "shadow");
+                btn.classList.add("text-emerald-100", "hover:bg-emerald-800/60");
+            });
+
+            const activeBtn = document.getElementById(`tab-btn-${tabName}`);
+            activeBtn.classList.remove("text-emerald-100", "hover:bg-emerald-800/60");
+            activeBtn.classList.add("bg-cranberry", "text-white", "shadow");
+
+            if (tabName === "scanner") {
+                populateManualGuestDropdown();
+            } else if (isScanning) {
+                stopCameraScanner();
+            }
+        }
+
+        /**
+         * 5. TOAST NOTIFICATIONS
+         */
+        function showToast(title, message, type = "info") {
+            const container = document.getElementById("toast-container");
+            const toast = document.createElement("div");
+
+            const styles = {
+                success: "bg-emeraldDeep text-white border-goldLight",
+                error: "bg-cranberry text-white border-red-300",
+                warning: "bg-amber-600 text-white border-amber-200",
+                info: "bg-slate-800 text-white border-slate-600"
+            };
+
+            const icons = {
+                success: "fa-circle-check text-goldLight",
+                error: "fa-circle-exclamation text-white",
+                warning: "fa-triangle-exclamation text-amber-200",
+                info: "fa-circle-info text-sky-300"
+            };
+
+            toast.className = `pointer-events-auto rounded-xl shadow-xl border-l-4 p-4 flex items-start gap-3 transition-all duration-300 transform translate-y-2 opacity-0 ${styles[type] || styles.info}`;
+            toast.innerHTML = `
+                <i class="fa-solid ${icons[type] || icons.info} mt-0.5 text-lg"></i>
+                <div class="flex-1 text-sm">
+                    <p class="font-semibold">${title}</p>
+                    <p class="text-xs opacity-90 mt-0.5">${message}</p>
+                </div>
+                <button onclick="this.parentElement.remove()" class="opacity-70 hover:opacity-100">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            `;
+
+            container.appendChild(toast);
+            requestAnimationFrame(() => {
+                toast.classList.remove("translate-y-2", "opacity-0");
+            });
+
+            setTimeout(() => {
+                toast.classList.add("opacity-0", "translate-y-2");
+                setTimeout(() => toast.remove(), 300);
+            }, 4500);
+        }
+
+        /**
+         * 6. QR CODE GENERATION HELPERS
+         */
+        function buildQrPayload(guest) {
+            // Clean, unambiguous payload so any QR scanner reads the Guest ID reliably
+            return guest.id;
+        }
+
+        function getHostedQrImageUrl(qrData) {
+            return `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(qrData)}&margin=10`;
+        }
+
+        function buildEmailPassHtml(guest, hostedQrUrl) {
+            const safeName = escapeHtml(guest.name);
+            const safeType = escapeHtml(guest.type);
+            const safeDept = escapeHtml(guest.department);
+            const safeId = escapeHtml(guest.id);
+
+            return `
+<div style="font-family: Arial, Helvetica, sans-serif; max-width: 460px; margin: 16px auto; border: 2px solid #0f3d2e; border-radius: 16px; overflow: hidden; background: #ffffff;">
+  <div style="background: #b91c1c; color: #ffffff; padding: 18px; text-align: center; border-bottom: 3px solid #fbbf24;">
+    <p style="margin: 0; font-size: 11px; letter-spacing: 2px; color: #fbbf24; font-weight: bold;">OFFICIAL ADMIT ONE PASS</p>
+    <h2 style="margin: 6px 0 0; font-size: 22px; color: #ffffff;">Annual Christmas Party 2026</h2>
+  </div>
+  <div style="padding: 24px; text-align: center; background: #0f3d2e; color: #ffffff;">
+    <div style="display: inline-block; background: #ffffff; padding: 12px; border-radius: 14px; border: 4px solid #fbbf24;">
+      <img src="${hostedQrUrl}" alt="QR Code Pass for ${safeName}" width="240" height="240" style="display: block; width: 240px; height: 240px;" />
+    </div>
+    <div style="margin-top: 14px;">
+      <span style="display: inline-block; background: #fbbf24; color: #09261d; font-size: 11px; font-weight: bold; padding: 4px 12px; border-radius: 999px; text-transform: uppercase;">${safeType}</span>
+    </div>
+    <h3 style="margin: 10px 0 4px; font-size: 22px; color: #ffffff;">${safeName}</h3>
+    <p style="margin: 0 0 14px; font-size: 13px; color: #a7f3d0;">${safeDept}</p>
+    <div style="border-top: 1px dashed #34d399; padding-top: 12px; font-family: monospace; font-size: 16px; font-weight: bold; color: #fbbf24;">
+      PASS ID: ${safeId}
+    </div>
+  </div>
+  <div style="padding: 12px 18px; background: #f8fafc; text-align: center; font-size: 12px; color: #475569;">
+    Present this QR code at the check-in desk. <a href="${hostedQrUrl}" target="_blank" style="color: #0f3d2e; font-weight: bold;">Open QR Image</a>
+  </div>
+</div>`.trim();
+        }
+
+        function renderQrIntoElement(elementId, text, size = 168) {
+            const el = document.getElementById(elementId);
+            el.innerHTML = "";
+            new QRCode(el, {
+                text: text,
+                width: size,
+                height: size,
+                colorDark: "#0f3d2e",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+        }
+
+        function getPreviewQrDataUri() {
+            const container = document.getElementById("preview-qr-container");
+            const canvas = container.querySelector("canvas");
+            if (canvas) {
+                return canvas.toDataURL("image/png");
+            }
+            const img = container.querySelector("img");
+            return img ? img.src : "";
+        }
+
+        /**
+         * 7. GUEST REGISTRATION & EMAILJS INTEGRATION
+         */
+        async function handleGuestRegistration(event) {
+            event.preventDefault();
+
+            const name = document.getElementById("guest-name").value.trim();
+            const email = document.getElementById("guest-email").value.trim();
+            const department = document.getElementById("guest-dept").value.trim() || "General Guest";
+            const type = document.getElementById("guest-type").value;
+            const autoSend = document.getElementById("auto-send-email").checked;
+
+            if (!name || !email) return;
+
+            const newGuest = {
+                id: generateUniqueGuestId(),
+                name,
+                email,
+                department,
+                type,
+                emailStatus: "Pending",
+                checkedIn: false,
+                checkInTime: null,
+                registeredAt: new Date().toISOString()
+            };
+
+            await persistGuestRecord(newGuest);
+            displayGuestInPassPreview(newGuest);
+
+            // Reset inputs
+            document.getElementById("guest-name").value = "";
+            document.getElementById("guest-email").value = "";
+            document.getElementById("guest-dept").value = "";
+
+            showToast("Guest Registered & Synced", `${newGuest.name} (${newGuest.id}) synced across all devices.`, "success");
+
+            if (autoSend) {
+                await sendQrEmail(newGuest.id);
+            }
+        }
+
+        function displayGuestInPassPreview(guest) {
+            currentPreviewGuestId = guest.id;
+
+            document.getElementById("preview-guest-name").textContent = guest.name;
+            document.getElementById("preview-guest-dept").textContent = guest.department;
+            document.getElementById("preview-guest-email").textContent = guest.email;
+            document.getElementById("preview-guest-type").textContent = guest.type;
+            document.getElementById("preview-guest-id").textContent = guest.id;
+
+            renderQrIntoElement("preview-qr-container", buildQrPayload(guest), 168);
+
+            const actions = document.getElementById("pass-actions");
+            actions.classList.remove("opacity-50", "pointer-events-none");
+
+            const badge = document.getElementById("pass-email-badge");
+            badge.classList.remove("hidden");
+            updateEmailBadgeUI(badge, guest.emailStatus);
+        }
+
+        function updateEmailBadgeUI(badgeEl, status) {
+            if (status === "Sent") {
+                badgeEl.className = "text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800";
+                badgeEl.innerHTML = '<i class="fa-solid fa-check mr-1"></i>Email Sent';
+            } else if (status === "Sending...") {
+                badgeEl.className = "text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800";
+                badgeEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i>Sending...';
+            } else if (status === "Failed") {
+                badgeEl.className = "text-xs font-semibold px-2.5 py-1 rounded-full bg-red-100 text-red-800";
+                badgeEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-1"></i>Send Failed';
+            } else {
+                badgeEl.className = "text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600";
+                badgeEl.textContent = "Not Sent";
+            }
+        }
+
+        async function sendEmailForCurrentPass() {
+            if (!currentPreviewGuestId) return;
+            await sendQrEmail(currentPreviewGuestId);
+        }
+
+        async function sendQrEmail(guestId) {
+            const guest = guests.find(g => g.id === guestId);
+            if (!guest) return;
+
+            const btn = document.getElementById("btn-send-email-now");
+            const originalBtnHtml = btn ? btn.innerHTML : "";
+
+            await updateGuestRecordFields(guest.id, { emailStatus: "Sending..." });
+            if (currentPreviewGuestId === guest.id) {
+                updateEmailBadgeUI(document.getElementById("pass-email-badge"), "Sending...");
+                if (btn) {
+                    btn.disabled = true;
+                    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> <span>Sending QR Pass...</span>';
+                }
+            }
+
+            const qrData = buildQrPayload(guest);
+            const hostedQrUrl = getHostedQrImageUrl(qrData);
+            const base64Qr = currentPreviewGuestId === guest.id ? getPreviewQrDataUri() : "";
+            const renderedPassHtml = buildEmailPassHtml(guest, hostedQrUrl);
+
+            // Template parameters compatible with EmailJS templates (HTTPS QR image URL + pre-rendered HTML card)
+            const templateParams = {
+                to_name: guest.name,
+                to_email: guest.email,
+                email: guest.email,
+                reply_to: guest.email,
+                guest_id: guest.id,
+                guest_type: guest.type,
+                department: guest.department,
+                event_name: "Annual Christmas Party 2026",
+                qr_code_url: hostedQrUrl,
+                qr_image_url: hostedQrUrl,
+                qr_code: hostedQrUrl,
+                qr_code_base64: base64Qr || hostedQrUrl,
+                qr_html: renderedPassHtml,
+                message_html: renderedPassHtml,
+                message: `Ho Ho Ho, ${guest.name}! You are officially registered for the Annual Christmas Party 2026 (${guest.type}). Your Pass ID is ${guest.id}. View or save your QR code here: ${hostedQrUrl}`
+            };
+
+            try {
+                if (!window.emailjs) {
+                    throw new Error("EmailJS SDK not loaded.");
+                }
+
+                await emailjs.send(
+                    window.EMAILJS_CONFIG.serviceId,
+                    window.EMAILJS_CONFIG.templateId,
+                    templateParams,
+                    window.EMAILJS_CONFIG.publicKey
+                );
+
+                await updateGuestRecordFields(guest.id, { emailStatus: "Sent" });
+                showToast("QR Pass Emailed!", `Sent to ${guest.email} via EmailJS.`, "success");
+            } catch (error) {
+                console.error("EmailJS Error:", error);
+                await updateGuestRecordFields(guest.id, { emailStatus: "Failed" });
+                const errDetail = error?.text || error?.message || "Check EmailJS template variables.";
+                showToast("Email Delivery Issue", `Could not send to ${guest.email}: ${errDetail}`, "error");
+            } finally {
+                if (currentPreviewGuestId === guest.id) {
+                    updateEmailBadgeUI(document.getElementById("pass-email-badge"), guest.emailStatus);
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerHTML = originalBtnHtml;
+                    }
+                }
+            }
+        }
+
+        function downloadCurrentPassImage() {
+            const guest = guests.find(g => g.id === currentPreviewGuestId);
+            if (!guest) return;
+
+            const qrCanvas = document.querySelector("#preview-qr-container canvas");
+            if (!qrCanvas) {
+                showToast("Download Unavailable", "QR code canvas is not ready yet.", "warning");
+                return;
+            }
+
+            // Create a festive branded pass image on an offscreen canvas
+            const canvas = document.createElement("canvas");
+            canvas.width = 500;
+            canvas.height = 680;
+            const ctx = canvas.getContext("2d");
+
+            // Background Emerald Gradient
+            const grad = ctx.createLinearGradient(0, 0, 0, 680);
+            grad.addColorStop(0, "#0f3d2e");
+            grad.addColorStop(1, "#09261d");
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, 500, 680);
+
+            // Gold Border
+            ctx.strokeStyle = "#fbbf24";
+            ctx.lineWidth = 8;
+            ctx.strokeRect(12, 12, 476, 656);
+
+            // Cranberry Header
+            ctx.fillStyle = "#b91c1c";
+            ctx.fillRect(16, 16, 468, 105);
+
+            ctx.fillStyle = "#fbbf24";
+            ctx.font = "bold 14px Inter, sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("OFFICIAL ADMIT ONE PASS", 250, 52);
+
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "bold 28px Georgia, serif";
+            ctx.fillText("Annual Christmas Party", 250, 90);
+
+            // White QR Card Box
+            ctx.fillStyle = "#ffffff";
+            ctx.beginPath();
+            ctx.roundRect(115, 150, 270, 270, 20);
+            ctx.fill();
+
+            // Draw QR Code
+            ctx.drawImage(qrCanvas, 135, 170, 230, 230);
+
+            // Guest Badge
+            ctx.fillStyle = "#fbbf24";
+            ctx.beginPath();
+            ctx.roundRect(175, 445, 150, 30, 15);
+            ctx.fill();
+
+            ctx.fillStyle = "#09261d";
+            ctx.font = "bold 13px Inter, sans-serif";
+            ctx.fillText(guest.type.toUpperCase(), 250, 465);
+
+            // Guest Name & Details
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "bold 26px Georgia, serif";
+            ctx.fillText(guest.name, 250, 515);
+
+            ctx.fillStyle = "#a7f3d0";
+            ctx.font = "15px Inter, sans-serif";
+            ctx.fillText(guest.department, 250, 545);
+
+            // Pass ID Footer
+            ctx.strokeStyle = "#10b981";
+            ctx.setLineDash([8, 6]);
+            ctx.beginPath();
+            ctx.moveTo(45, 585);
+            ctx.lineTo(455, 585);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.fillStyle = "#fbbf24";
+            ctx.font = "bold 20px monospace";
+            ctx.fillText(`PASS ID: ${guest.id}`, 250, 630);
+
+            const link = document.createElement("a");
+            link.download = `${guest.id}_${guest.name.replace(/\s+/g, "_")}.png`;
+            link.href = canvas.toDataURL("image/png");
+            link.click();
+
+            showToast("Pass Downloaded", `Saved ${link.download}`, "success");
+        }
+
+        /**
+         * 8. WEB AUDIO FESTIVE CHIMES
+         */
+        function playFestiveChime(type = "success") {
+            try {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                const ctx = new AudioCtx();
+
+                const playNote = (freq, startTime, duration, wave = "sine") => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = wave;
+                    osc.frequency.setValueAtTime(freq, startTime);
+
+                    gain.gain.setValueAtTime(0.001, startTime);
+                    gain.gain.exponentialRampToValueAtTime(0.22, startTime + 0.03);
+                    gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start(startTime);
+                    osc.stop(startTime + duration);
+                };
+
+                const now = ctx.currentTime;
+                if (type === "success") {
+                    // Cheerful holiday bell triad (C5 - E5 - G5 - C6)
+                    playNote(523.25, now, 0.25, "triangle");
+                    playNote(659.25, now + 0.1, 0.25, "triangle");
+                    playNote(783.99, now + 0.2, 0.25, "triangle");
+                    playNote(1046.50, now + 0.3, 0.55, "sine");
+                } else if (type === "warning") {
+                    // Gentle double chime for already checked-in
+                    playNote(440, now, 0.2, "sine");
+                    playNote(440, now + 0.22, 0.25, "sine");
+                } else {
+                    // Low alert tone for invalid code
+                    playNote(220, now, 0.3, "sawtooth");
+                    playNote(185, now + 0.2, 0.4, "sawtooth");
+                }
+            } catch (e) {
+                console.warn("Web Audio blocked or unsupported:", e);
+            }
+        }
+
+        /**
+         * 9. STAFF QR SCANNER & CHECK-IN LOGIC
+         */
+        async function startCameraScanner() {
+            if (isScanning) return;
+
+            const placeholder = document.getElementById("camera-placeholder");
+            const btnStart = document.getElementById("btn-start-scan");
+            const btnStop = document.getElementById("btn-stop-scan");
+
+            try {
+                html5QrCode = new Html5Qrcode("qr-reader");
+                placeholder.classList.add("hidden");
+                btnStart.classList.add("hidden");
+                btnStop.classList.remove("hidden");
+                isScanning = true;
+
+                await html5QrCode.start(
+                    { facingMode: "environment" },
+                    { fps: 10, qrbox: { width: 220, height: 220 } },
+                    (decodedText) => {
+                        const now = Date.now();
+                        // Prevent rapid duplicate triggers within 2.5 seconds
+                        if (decodedText === lastScannedCode && now - lastScannedTime < 2500) {
+                            return;
+                        }
+                        lastScannedCode = decodedText;
+                        lastScannedTime = now;
+                        processCheckIn(decodedText);
+                    },
+                    () => { /* Ignore continuous frame parse misses */ }
+                );
+            } catch (err) {
+                console.error("Camera start error:", err);
+                isScanning = false;
+                placeholder.classList.remove("hidden");
+                btnStart.classList.remove("hidden");
+                btnStop.classList.add("hidden");
+                showToast("Camera Unavailable", "Could not access webcam. Use the Manual Check-In simulator below.", "warning");
+            }
+        }
+
+        async function stopCameraScanner() {
+            if (!html5QrCode || !isScanning) return;
+            try {
+                await html5QrCode.stop();
+                html5QrCode.clear();
+            } catch (err) {
+                console.warn("Error stopping scanner:", err);
+            }
+            isScanning = false;
+            document.getElementById("camera-placeholder").classList.remove("hidden");
+            document.getElementById("btn-start-scan").classList.remove("hidden");
+            document.getElementById("btn-stop-scan").classList.add("hidden");
+        }
+
+        function simulateSelectedScan() {
+            const select = document.getElementById("manual-guest-select");
+            if (!select.value) {
+                showToast("Select a Guest", "Please choose a guest from the dropdown first.", "warning");
+                return;
+            }
+            processCheckIn(select.value);
+        }
+
+        function handleManualIdSubmit(event) {
+            event.preventDefault();
+            const input = document.getElementById("manual-id-input");
+            const val = input.value.trim();
+            if (!val) return;
+            processCheckIn(val);
+            input.value = "";
+        }
+
+        async function processCheckIn(rawScannedText) {
+            const cleaned = rawScannedText.trim();
+            // Support direct ID or JSON payload if scanned from external generator
+            let targetId = cleaned;
+            try {
+                const parsed = JSON.parse(cleaned);
+                if (parsed && parsed.id) targetId = parsed.id;
+            } catch (_) { /* Not JSON, use raw string */ }
+
+            const guest = guests.find(g => g.id.toLowerCase() === targetId.toLowerCase());
+
+            const card = document.getElementById("scan-result-card");
+            const icon = document.getElementById("scan-result-icon");
+            const badge = document.getElementById("scan-result-badge");
+            const title = document.getElementById("scan-result-title");
+            const subtitle = document.getElementById("scan-result-subtitle");
+            const details = document.getElementById("scan-result-details");
+
+            if (!guest) {
+                // INVALID QR CODE
+                playFestiveChime("error");
+                card.className = "bg-red-50 rounded-2xl shadow-md border-2 border-cranberry p-6 transition-all duration-300";
+                icon.className = "w-16 h-16 rounded-2xl bg-cranberry text-white flex items-center justify-center text-3xl shrink-0 shadow";
+                icon.innerHTML = '<i class="fa-solid fa-circle-xmark"></i>';
+                badge.className = "inline-block px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-cranberry text-white mb-1";
+                badge.textContent = "Invalid QR Pass";
+                title.className = "text-xl font-bold text-cranberryDark";
+                title.textContent = "Unrecognized Code";
+                subtitle.className = "text-sm text-red-700 mt-0.5";
+                subtitle.textContent = `Scanned value "${cleaned}" does not match any registered guest.`;
+                details.classList.add("hidden");
+                return;
+            }
+
+            if (guest.checkedIn) {
+                // ALREADY CHECKED IN (PREVENT DUPLICATE ENTRY ACROSS ALL DEVICES)
+                playFestiveChime("warning");
+                const formattedTime = formatTime(guest.checkInTime);
+                card.className = "bg-amber-50 rounded-2xl shadow-md border-2 border-amber-500 p-6 transition-all duration-300";
+                icon.className = "w-16 h-16 rounded-2xl bg-amber-500 text-white flex items-center justify-center text-3xl shrink-0 shadow";
+                icon.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
+                badge.className = "inline-block px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-amber-500 text-white mb-1";
+                badge.textContent = "Already Checked In";
+                title.className = "text-xl font-bold text-amber-900";
+                title.textContent = guest.name;
+                subtitle.className = "text-sm text-amber-800 mt-0.5";
+                subtitle.textContent = `Duplicate scan blocked — already checked in at ${formattedTime}.`;
+
+                populateScanDetails(guest, formattedTime);
+                return;
+            }
+
+            // VALID & FIRST CHECK-IN
+            playFestiveChime("success");
+            const nowIso = new Date().toISOString();
+            await updateGuestRecordFields(guest.id, {
+                checkedIn: true,
+                checkInTime: nowIso
+            });
+
+            const formattedTime = formatTime(nowIso);
+            card.className = "bg-emerald-50 rounded-2xl shadow-md border-2 border-emerald-600 p-6 transition-all duration-300";
+            icon.className = "w-16 h-16 rounded-2xl bg-emeraldDeep text-goldLight flex items-center justify-center text-3xl shrink-0 shadow";
+            icon.innerHTML = '<i class="fa-solid fa-champagne-glasses"></i>';
+            badge.className = "inline-block px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-emeraldDeep text-goldLight mb-1";
+            badge.textContent = "Welcome! Check-In Verified";
+            title.className = "text-xl font-bold text-emeraldDark";
+            title.textContent = `Merry Christmas, ${guest.name}!`;
+            subtitle.className = "text-sm text-emerald-800 mt-0.5";
+            subtitle.textContent = `Entry approved at ${formattedTime} & synced live. Enjoy the party!`;
+
+            populateScanDetails(guest, formattedTime);
+            populateManualGuestDropdown();
+        }
+
+        function populateScanDetails(guest, formattedTime) {
+            const details = document.getElementById("scan-result-details");
+            details.classList.remove("hidden");
+            document.getElementById("scan-detail-type").textContent = guest.type;
+            document.getElementById("scan-detail-time").textContent = formattedTime;
+            document.getElementById("scan-detail-dept").textContent = guest.department;
+            document.getElementById("scan-detail-id").textContent = guest.id;
+        }
+
+        async function toggleManualCheckIn(guestId) {
+            const guest = guests.find(g => g.id === guestId);
+            if (!guest) return;
+
+            if (guest.checkedIn) {
+                await updateGuestRecordFields(guest.id, {
+                    checkedIn: false,
+                    checkInTime: null
+                });
+                showToast("Check-In Reverted", `${guest.name} marked as Pending Arrival.`, "info");
+            } else {
+                await updateGuestRecordFields(guest.id, {
+                    checkedIn: true,
+                    checkInTime: new Date().toISOString()
+                });
+                playFestiveChime("success");
+                showToast("Checked In", `${guest.name} manually checked in & synced.`, "success");
+            }
+        }
+
+        async function deleteGuest(guestId) {
+            const removed = await removeGuestRecord(guestId);
+            if (!removed) return;
+            showToast("Guest Removed", `${removed.name} was removed from the shared database.`, "info");
+        }
+
+        async function loadSampleGuests() {
+            const samples = [
+                { name: "Gabriel Reyes", email: "gabriel.reyes@example.com", department: "Executive Board", type: "VIP", checkedIn: true },
+                { name: "Sofia Mendoza", email: "sofia.mendoza@example.com", department: "Product & Design", type: "Employee", checkedIn: true },
+                { name: "Mateo Cruz", email: "mateo.cruz@example.com", department: "Engineering", type: "Employee", checkedIn: false },
+                { name: "Isabella Lim", email: "isabella.lim@example.com", department: "Guest of Sofia", type: "Plus-One", checkedIn: false },
+                { name: "Lucas Tan", email: "lucas.tan@example.com", department: "Marketing & Events", type: "Employee", checkedIn: false }
+            ];
+
+            let addedCount = 0;
+            for (let idx = 0; idx < samples.length; idx++) {
+                const s = samples[idx];
+                if (!guests.some(g => g.email.toLowerCase() === s.email.toLowerCase())) {
+                    const g = {
+                        id: generateUniqueGuestId(),
+                        name: s.name,
+                        email: s.email,
+                        department: s.department,
+                        type: s.type,
+                        emailStatus: "Pending",
+                        checkedIn: s.checkedIn,
+                        checkInTime: s.checkedIn ? new Date(Date.now() - (idx + 1) * 900000).toISOString() : null,
+                        registeredAt: new Date().toISOString()
+                    };
+                    await persistGuestRecord(g);
+                    addedCount++;
+                }
+            }
+
+            if (guests.length > 0 && !currentPreviewGuestId) {
+                displayGuestInPassPreview(guests[0]);
+            }
+
+            if (addedCount > 0) {
+                showToast("Sample Guests Synced", `Added ${addedCount} sample attendees to the shared database.`, "success");
+            } else {
+                showToast("Samples Already Loaded", "All sample guests are already in your directory.", "info");
+            }
+        }
+
+        /**
+         * 10B. EXCEL (.XLSX) DATABASE IMPORT & EXPORT (SHEETJS)
+         */
+        function triggerExcelImport() {
+            const input = document.getElementById("excel-file-input");
+            if (input) {
+                input.value = "";
+                input.click();
+            }
+        }
+
+        async function handleExcelImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (typeof XLSX === "undefined") {
+                showToast("Excel Library Error", "SheetJS (XLSX) failed to load. Please refresh the page.", "error");
+                return;
+            }
+
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const workbook = XLSX.read(arrayBuffer, { type: "array" });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const rows = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+
+                if (!rows || rows.length === 0) {
+                    showToast("Empty Spreadsheet", "No guest rows were found in the uploaded Excel file.", "warning");
+                    return;
+                }
+
+                let importedCount = 0;
+                let updatedCount = 0;
+
+                for (const row of rows) {
+                    // Flexible column name matching (supports exported format & custom Excel sheets)
+                    const norm = {};
+                    Object.keys(row).forEach(k => {
+                        norm[k.trim().toLowerCase()] = String(row[k]).trim();
+                    });
+
+                    const name = norm["full name"] || norm["name"] || norm["guest name"] || norm["attendee"];
+                    const email = norm["email"] || norm["email address"] || norm["e-mail"];
+                    if (!name || !email) continue;
+
+                    const rawId = norm["guest id"] || norm["pass id"] || norm["id"] || "";
+                    const guestType = norm["guest type"] || norm["category"] || norm["type"] || "Employee";
+                    const department = norm["table/group"] || norm["department / group"] || norm["department"] || norm["group"] || norm["table"] || "General Guest";
+                    const rawStatus = (norm["check-in status"] || norm["attendance status"] || norm["status"] || "").toLowerCase();
+                    const isCheckedIn = rawStatus === "checked in" || rawStatus === "true" || rawStatus === "yes" || rawStatus === "1";
+                    const rawCheckInTime = norm["check-in time"] || "";
+                    const rawRegTime = norm["registration time"] || "";
+
+                    // Check if guest already exists by Guest ID or Email
+                    const existing = guests.find(g =>
+                        (rawId && g.id.toLowerCase() === rawId.toLowerCase()) ||
+                        g.email.toLowerCase() === email.toLowerCase()
+                    );
+
+                    const guestRecord = {
+                        id: existing ? existing.id : (rawId || generateUniqueGuestId()),
+                        name,
+                        email,
+                        department,
+                        type: guestType,
+                        emailStatus: existing ? existing.emailStatus : "Pending",
+                        checkedIn: existing ? (existing.checkedIn || isCheckedIn) : isCheckedIn,
+                        checkInTime: existing && existing.checkInTime
+                            ? existing.checkInTime
+                            : (isCheckedIn ? (rawCheckInTime || new Date().toISOString()) : null),
+                        registeredAt: existing && existing.registeredAt
+                            ? existing.registeredAt
+                            : (rawRegTime || new Date().toISOString())
+                    };
+
+                    await persistGuestRecord(guestRecord);
+                    if (existing) {
+                        updatedCount++;
+                    } else {
+                        importedCount++;
+                    }
+                }
+
+                if (guests.length > 0 && !currentPreviewGuestId) {
+                    displayGuestInPassPreview(guests[0]);
+                }
+
+                showToast(
+                    "Excel Database Imported",
+                    `Added ${importedCount} new guests and updated ${updatedCount} existing records across all devices.`,
+                    "success"
+                );
+            } catch (err) {
+                console.error("Excel import error:", err);
+                showToast("Excel Import Failed", "Please ensure the file is a valid .xlsx, .xls, or .csv spreadsheet.", "error");
+            }
+        }
+
+        function exportExcelDatabase() {
+            if (guests.length === 0) {
+                showToast("No Data to Export", "Register or load guests before exporting the Excel database.", "warning");
+                return;
+            }
+
+            if (typeof XLSX === "undefined") {
+                showToast("Excel Library Error", "SheetJS (XLSX) is unavailable.", "error");
+                return;
+            }
+
+            const excelRows = guests.map(g => ({
+                "Guest ID": g.id,
+                "Full Name": g.name,
+                "Email": g.email,
+                "Guest Type": g.type,
+                "Table/Group": g.department,
+                "Registration Time": g.registeredAt ? new Date(g.registeredAt).toLocaleString() : "",
+                "Check-In Status": g.checkedIn ? "Checked In" : "Pending Arrival",
+                "Check-In Time": g.checkInTime ? new Date(g.checkInTime).toLocaleString() : ""
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(excelRows);
+
+            // Set clean column widths for readability in Microsoft Excel / Google Sheets
+            worksheet["!cols"] = [
+                { wch: 18 }, // Guest ID
+                { wch: 26 }, // Full Name
+                { wch: 30 }, // Email
+                { wch: 16 }, // Guest Type
+                { wch: 22 }, // Table/Group
+                { wch: 22 }, // Registration Time
+                { wch: 18 }, // Check-In Status
+                { wch: 22 }  // Check-In Time
+            ];
+
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Guest Attendance DB");
+
+            XLSX.writeFile(workbook, "Christmas_Party_Guest_Database.xlsx");
+            showToast("Excel Database Exported", "Downloaded Christmas_Party_Guest_Database.xlsx", "success");
+        }
+
+        function populateManualGuestDropdown() {
+            const select = document.getElementById("manual-guest-select");
+            const currentVal = select.value;
+            select.innerHTML = '<option value="">-- Choose a guest to simulate scan --</option>';
+
+            guests.forEach(g => {
+                const opt = document.createElement("option");
+                opt.value = g.id;
+                opt.textContent = `${g.name} (${g.id}) ${g.checkedIn ? "✓ Checked In" : ""}`;
+                select.appendChild(opt);
+            });
+
+            if (currentVal) select.value = currentVal;
+        }
+
+        /**
+         * 10. DASHBOARD, TABLE & SAMPLE DATA
+         */
+        function updateAllUI() {
+            const total = guests.length;
+            const checkedInList = guests.filter(g => g.checkedIn);
+            const checkedInCount = checkedInList.length;
+            const pendingCount = total - checkedInCount;
+            const rate = total > 0 ? Math.round((checkedInCount / total) * 100) : 0;
+
+            document.getElementById("nav-badge-count").textContent = total;
+            document.getElementById("stat-total").textContent = total;
+            document.getElementById("stat-checked-in").textContent = checkedInCount;
+            document.getElementById("stat-pending").textContent = pendingCount;
+            document.getElementById("stat-rate").textContent = `${rate}%`;
+
+            renderRecentCheckIns(checkedInList);
+            renderGuestTable();
+        }
+
+        function renderRecentCheckIns(checkedInList) {
+            const container = document.getElementById("recent-activity-list");
+            const counter = document.getElementById("recent-checkin-counter");
+            counter.textContent = `${checkedInList.length} checked in`;
+
+            if (checkedInList.length === 0) {
+                container.innerHTML = `
+                    <div class="p-8 text-center text-slate-400 text-sm">
+                        <i class="fa-solid fa-sleigh text-2xl mb-2 text-slate-300 block"></i>
+                        No guests checked in yet.
+                    </div>
+                `;
+                return;
+            }
+
+            const sorted = [...checkedInList].sort((a, b) => new Date(b.checkInTime) - new Date(a.checkInTime));
+            container.innerHTML = sorted.map(g => `
+                <div class="px-5 py-3.5 flex items-center justify-between hover:bg-slate-50 transition">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-full bg-emerald-100 text-emeraldDeep font-bold text-xs flex items-center justify-center">
+                            ${g.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                            <p class="text-sm font-semibold text-slate-800">${escapeHtml(g.name)}</p>
+                            <p class="text-xs text-slate-500">${escapeHtml(g.type)} • <span class="font-mono">${g.id}</span></p>
+                        </div>
+                    </div>
+                    <span class="text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">
+                        ${formatTime(g.checkInTime)}
+                    </span>
+                </div>
+            `).join("");
+        }
+
+        function renderGuestTable() {
+            const tbody = document.getElementById("guest-table-body");
+            const search = document.getElementById("search-guests").value.toLowerCase().trim();
+            const statusFilter = document.getElementById("filter-status").value;
+            const catFilter = document.getElementById("filter-category").value;
+
+            const filtered = guests.filter(g => {
+                const matchesSearch = !search ||
+                    g.name.toLowerCase().includes(search) ||
+                    g.email.toLowerCase().includes(search) ||
+                    g.id.toLowerCase().includes(search) ||
+                    g.department.toLowerCase().includes(search);
+
+                const matchesStatus = statusFilter === "all" ||
+                    (statusFilter === "checked-in" && g.checkedIn) ||
+                    (statusFilter === "pending" && !g.checkedIn);
+
+                const matchesCat = catFilter === "all" || g.type === catFilter;
+
+                return matchesSearch && matchesStatus && matchesCat;
+            });
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="py-12 text-center text-slate-400">
+                            <i class="fa-solid fa-gifts text-3xl text-slate-300 mb-2 block"></i>
+                            <p class="text-sm font-medium text-slate-500">No guests match your current view.</p>
+                            <p class="text-xs mt-1">Register a guest or click "Load Sample Guests" to get started.</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(g => {
+                const emailBadge = g.emailStatus === "Sent"
+                    ? `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800"><i class="fa-solid fa-check"></i> Sent</span>`
+                    : g.emailStatus === "Failed"
+                    ? `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800"><i class="fa-solid fa-xmark"></i> Failed</span>`
+                    : `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">Pending</span>`;
+
+                const statusBadge = g.checkedIn
+                    ? `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emeraldDeep text-goldLight"><i class="fa-solid fa-circle-check"></i> Checked In</span>`
+                    : `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800"><i class="fa-regular fa-clock"></i> Pending Arrival</span>`;
+
+                return `
+                    <tr class="hover:bg-slate-50/90 transition">
+                        <td class="py-3.5 px-4 font-mono text-xs font-bold text-emeraldDeep whitespace-nowrap">${g.id}</td>
+                        <td class="py-3.5 px-4">
+                            <p class="font-semibold text-slate-800">${escapeHtml(g.name)}</p>
+                            <p class="text-xs text-slate-500">${escapeHtml(g.email)} • ${escapeHtml(g.department)}</p>
+                        </td>
+                        <td class="py-3.5 px-4">
+                            <span class="px-2.5 py-0.5 rounded-lg text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">${escapeHtml(g.type)}</span>
+                        </td>
+                        <td class="py-3.5 px-4 whitespace-nowrap">${emailBadge}</td>
+                        <td class="py-3.5 px-4 whitespace-nowrap">${statusBadge}</td>
+                        <td class="py-3.5 px-4 text-xs text-slate-600 whitespace-nowrap">
+                            ${g.checkInTime ? formatTime(g.checkInTime) : "—"}
+                        </td>
+                        <td class="py-3.5 px-4 text-right whitespace-nowrap">
+                            <div class="inline-flex items-center gap-1.5">
+                                <button onclick="openGuestQrModal('${g.id}')" title="View QR Pass" class="p-2 rounded-lg text-slate-600 hover:text-emeraldDeep hover:bg-emerald-50 transition">
+                                    <i class="fa-solid fa-qrcode"></i>
+                                </button>
+                                <button onclick="sendQrEmail('${g.id}')" title="Send / Resend QR Email" class="p-2 rounded-lg text-slate-600 hover:text-amber-700 hover:bg-amber-50 transition">
+                                    <i class="fa-solid fa-paper-plane"></i>
+                                </button>
+                                <button onclick="toggleManualCheckIn('${g.id}')" title="${g.checkedIn ? 'Undo Check-In' : 'Manual Check-In'}" class="p-2 rounded-lg ${g.checkedIn ? 'text-amber-600 hover:bg-amber-50' : 'text-emerald-700 hover:bg-emerald-50'} transition">
+                                    <i class="fa-solid ${g.checkedIn ? 'fa-rotate-left' : 'fa-user-check'}"></i>
+                                </button>
+                                <button onclick="deleteGuest('${g.id}')" title="Delete Guest" class="p-2 rounded-lg text-slate-400 hover:text-cranberry hover:bg-red-50 transition">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join("");
+        }
+
+        function populateManualGuestDropdown() {
+            const select = document.getElementById("manual-guest-select");
+            if (!select) return;
+            const currentVal = select.value;
+            select.innerHTML = '<option value="">-- Choose a guest to simulate scan --</option>';
+
+            guests.forEach(g => {
+                const opt = document.createElement("option");
+                opt.value = g.id;
+                opt.textContent = `${g.name} (${g.id}) ${g.checkedIn ? "✓ Checked In" : ""}`;
+                select.appendChild(opt);
+            });
+
+            if (currentVal) select.value = currentVal;
+        }
+
+        /**
+         * 11. MODALS & UTILITIES
+         */
+        function openPayloadModal() {
+            document.getElementById("payload-modal").classList.remove("hidden");
+        }
+        function closePayloadModal() {
+            document.getElementById("payload-modal").classList.add("hidden");
+        }
+
+        function copyEmailJsHtmlSnippet() {
+            const textarea = document.getElementById("emailjs-template-snippet");
+            if (!textarea) return;
+            textarea.select();
+            textarea.setSelectionRange(0, 99999);
+            try {
+                document.execCommand("copy");
+                showToast("HTML Snippet Copied", "Paste into your EmailJS template_n9u8619 source editor.", "success");
+            } catch (err) {
+                showToast("Copy Failed", "Please select and copy the HTML snippet manually.", "warning");
+            }
+        }
+
+        function openGuestQrModal(guestId) {
+            const guest = guests.find(g => g.id === guestId);
+            if (!guest) return;
+
+            document.getElementById("modal-guest-name").textContent = guest.name;
+            document.getElementById("modal-guest-email").textContent = guest.email;
+            document.getElementById("modal-guest-type").textContent = guest.type;
+            document.getElementById("modal-guest-id").textContent = guest.id;
+
+            renderQrIntoElement("modal-qr-container", buildQrPayload(guest), 180);
+
+            const btnResend = document.getElementById("modal-btn-resend");
+            btnResend.onclick = () => {
+                sendQrEmail(guest.id);
+                closeGuestQrModal();
+            };
+
+            const btnCheckIn = document.getElementById("modal-btn-checkin");
+            btnCheckIn.innerHTML = guest.checkedIn
+                ? '<i class="fa-solid fa-rotate-left"></i><span>Undo Check-In</span>'
+                : '<i class="fa-solid fa-check"></i><span>Check In Now</span>';
+            btnCheckIn.onclick = () => {
+                toggleManualCheckIn(guest.id);
+                closeGuestQrModal();
+            };
+
+            document.getElementById("guest-qr-modal").classList.remove("hidden");
+        }
+
+        function closeGuestQrModal() {
+            document.getElementById("guest-qr-modal").classList.add("hidden");
+        }
+
+        function formatTime(isoString) {
+            if (!isoString) return "";
+            const date = new Date(isoString);
+            return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement("div");
+            div.textContent = str;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
